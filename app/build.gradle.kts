@@ -79,4 +79,8 @@ dependencies {
     implementation("com.google.android.gms:play-services-maps:19.0.0")
 
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+    implementation("mysql:mysql-connector-java:5.1.49")
+    implementation("org.mindrot:jbcrypt:0.4")
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.material:material-icons-extended")
 }
