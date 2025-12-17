@@ -56,7 +56,11 @@ object RouteRepository {
                             sequenceNumber = rsStops.getInt("seq"),
                             status = rsStops.getString("status"),
                             outletId = outlet.id,
-                            outlet = outlet
+                            outlet = outlet,
+
+                            // TAMBAHAN MAPPING
+                            plannedArrival = rsStops.getString("planned_arrival"),
+                            plannedDeparture = rsStops.getString("planned_departure")
                         )
                     )
                 }
@@ -80,5 +84,54 @@ object RouteRepository {
             e.printStackTrace()
         }
         return routeList
+    }
+
+    // ... import ...
+
+    // Fungsi Baru: Ambil detail 1 stop berdasarkan ID
+    fun getVisitDetail(stopId: Int): RouteStop? {
+        var stop: RouteStop? = null
+        val conn = MySQLHelper.connect() ?: return null
+
+        try {
+            // Kita JOIN tabel route_stops dengan outlets
+            val sql = """
+                SELECT rs.*, o.* FROM route_stops rs
+                JOIN outlets o ON rs.outlets_idoutlets = o.idoutlets
+                WHERE rs.idroute_stops = ?
+                LIMIT 1
+            """
+
+            val stmt = conn.prepareStatement(sql)
+            stmt.setInt(1, stopId)
+            val rs = stmt.executeQuery()
+
+            if (rs.next()) {
+                val outlet = Outlet(
+                    id = rs.getInt("idoutlets"),
+                    name = rs.getString("nama"),
+                    address = rs.getString("alamat"),
+                    latitude = rs.getDouble("lat"),
+                    longitude = rs.getDouble("lng"),
+                    phone = rs.getString("no_telp"),
+                    contactPerson = rs.getString("contact_person"),
+                    paymentType = rs.getString("tipe_pembayaran")
+                )
+
+                stop = RouteStop(
+                    id = rs.getInt("idroute_stops"),
+                    sequenceNumber = rs.getInt("seq"),
+                    status = rs.getString("status"),
+                    outletId = outlet.id,
+                    outlet = outlet,
+                    plannedArrival = rs.getString("planned_arrival"),
+                    plannedDeparture = rs.getString("planned_departure")
+                )
+            }
+            conn.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return stop
     }
 }

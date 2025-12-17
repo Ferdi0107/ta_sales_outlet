@@ -33,6 +33,7 @@ import com.example.ta_sales_outlet.data.repository.RouteRepository
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.navigation.NavController
+import com.example.ta_sales_outlet.utils.MapsHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,6 +129,28 @@ fun SalesHomeScreen(
                         EmptyStateCard()
                     }
                 } else {
+                    // --- BAGIAN 1: TOMBOL MULAI (HEADER) ---
+                    // Kita taruh di dalam 'item' (tunggal) sebelum list rute
+                    item {
+                        // Ambil koordinat start dari rute pertama (jika ada)
+                        // Atau hardcode dulu jika di database belum ada kolom start_lat
+                        val startLat = -7.2891
+                        val startLng = 112.7343
+
+                        Button(
+                            onClick = { MapsHelper.openNavigation(context, startLat, startLng) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Mulai Perjalanan (Ke Gudang)")
+                        }
+                    }
+
+                    // --- BAGIAN 2: DAFTAR RUTE (BODY) ---
+                    // Ini kode lama Anda, menampilkan kartu-kartu rute
                     items(routeList) { route ->
                         val isFirst = (route == routeList.first())
                         PremiumRouteCard(
@@ -135,13 +158,31 @@ fun SalesHomeScreen(
                             brandColor = brandColor,
                             defaultExpanded = isFirst,
                             onVisitClick = { stopId ->
-                                // LOGIKA NAVIGASI SAAT TOMBOL DIKLIK
                                 navController.navigate("visit_detail/$stopId")
                             }
                         )
                     }
-                    // Spacer bawah agar list paling bawah tidak terpotong navbar HP
-                    item { Spacer(modifier = Modifier.height(30.dp)) }
+
+                    // --- BAGIAN 3: TOMBOL SELESAI (FOOTER) ---
+                    // Kita taruh di dalam 'item' (tunggal) setelah list rute selesai
+                    item {
+                        val endLat = -7.2891
+                        val endLng = 112.7343
+
+                        OutlinedButton(
+                            onClick = { MapsHelper.openNavigation(context, endLat, endLng) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Gray)
+                        ) {
+                            Icon(Icons.Default.Home, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Selesai & Pulang (Ke Depo)")
+                        }
+
+                        // Spacer tambahan biar tombol tidak mepet banget sama navigasi HP bawah
+                        Spacer(modifier = Modifier.height(30.dp))
+                    }
                 }
             }
         }
@@ -267,22 +308,42 @@ fun PremiumRouteCard(
     }
 }
 
+fun formatTime(dateTimeStr: String?): String {
+    if (dateTimeStr.isNullOrEmpty()) return "-"
+    return try {
+        // Format DB: 2025-12-17 10:30:00
+        val parser = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val date = parser.parse(dateTimeStr)
+        formatter.format(date ?: Date())
+    } catch (e: Exception) {
+        "-"
+    }
+}
+
 @Composable
-fun TimelineItem(
-    stop: RouteStop,
-    brandColor: Color,
-    isLast: Boolean,
-    onVisitClick: (Int) -> Unit // <--- Parameter Baru
-) {
+fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitClick: (Int) -> Unit) {
     val isVisited = stop.status == "VISITED"
+
+    // Warna garis/dot: Jika Visited = Hijau, Belum = Biru
     val statusColor = if (isVisited) Color(0xFF4CAF50) else brandColor
 
-    Row(modifier = Modifier.height(IntrinsicSize.Min)) { // Penting agar garis tingginya pas
-        // KOLOM KIRI (GARIS & TITIK)
+    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+        // --- KOLOM KIRI (JAM & GARIS) ---
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.width(30.dp)
+            modifier = Modifier.width(50.dp) // Lebarkan sedikit buat jam
         ) {
+            // Tampilkan Jam Rencana (Hanya Jam Awal)
+            Text(
+                text = formatTime(stop.plannedArrival),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Gray
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
             // Titik (Dot)
             Box(
                 modifier = Modifier
@@ -292,65 +353,82 @@ fun TimelineItem(
                         shape = CircleShape
                     )
                     .then(
-                        // Border jika belum visited
                         if (!isVisited) Modifier.border(2.dp, statusColor, CircleShape) else Modifier
                     )
             )
 
-            // Garis (Line) - Jangan gambar jika item terakhir
+            // Garis (Line)
             if (!isLast) {
                 Box(
                     modifier = Modifier
                         .width(2.dp)
-                        .fillMaxHeight() // Mengisi tinggi sisa sampai item berikutnya
+                        .fillMaxHeight()
                         .background(Color.LightGray.copy(alpha = 0.5f))
                 )
             }
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
-        // KOLOM KANAN (KONTEN)
-        Column(modifier = Modifier.padding(bottom = 24.dp)) { // Padding bottom memberi jarak antar item
+        // --- KOLOM KANAN (KONTEN) ---
+        Column(modifier = Modifier.padding(bottom = 24.dp).weight(1f)) {
+
+            // Baris Nama Toko & Status Icon
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = stop.outlet?.name ?: "Unknown Outlet",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
-                    color = if (isVisited) Color.Gray else Color.Black
+                    color = if (isVisited) Color.Gray else Color.Black,
+                    modifier = Modifier.weight(1f)
                 )
+                // Icon Centang tetap ada sebagai indikator visual
                 if (isVisited) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = statusColor, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = statusColor, modifier = Modifier.size(18.dp))
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
+            // Alamat
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
+                Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(12.dp))
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = stop.outlet?.address ?: "-",
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     color = Color.Gray,
-                    maxLines = 2
+                    maxLines = 1
+                )
+            }
+
+            // Tampilkan Rentang Waktu (Optional, biar user tau durasi)
+            if (stop.plannedArrival != null && stop.plannedDeparture != null) {
+                Text(
+                    text = "Estimasi: ${formatTime(stop.plannedArrival)} - ${formatTime(stop.plannedDeparture)}",
+                    fontSize = 11.sp,
+                    color = brandColor,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Tombol Aksi (Hanya jika belum visited)
-            if (!isVisited) {
-                Button(
-                    onClick = { onVisitClick(stop.id) },
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                    modifier = Modifier.height(32.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = statusColor)
-                ) {
-                    Text("Kunjungi", fontSize = 12.sp)
-                }
+            // --- TOMBOL AKSI (REVISI: SELALU MUNCUL) ---
+            // Tombol tidak lagi di-hide, tapi warnanya dibedakan
+            Button(
+                onClick = { onVisitClick(stop.id) }, // Tetap bisa diklik meski sudah visited
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                modifier = Modifier.height(32.dp),
+                colors = ButtonDefaults.buttonColors(
+                    // Jika visited: Abu-abu (Kesan read-only/selesai), Jika belum: Biru
+                    containerColor = if (isVisited) Color.LightGray else brandColor,
+                    contentColor = if (isVisited) Color.Black else Color.White
+                )
+            ) {
+                Text(
+                    text = if (isVisited) "Lihat Detail" else "Kunjungi",
+                    fontSize = 12.sp
+                )
             }
         }
     }

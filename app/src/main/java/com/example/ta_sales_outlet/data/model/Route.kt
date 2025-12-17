@@ -16,5 +16,8 @@ data class RouteStop(
     @SerializedName("seq") val sequenceNumber: Int?,
     @SerializedName("status") val status: String?, // PLANNED, VISITED
     @SerializedName("outlets_idoutlets") val outletId: Int?,
-    @SerializedName("outlet_detail") val outlet: Outlet? // Object outlet lengkap (perlu di-join di backend nanti)
+    @SerializedName("outlet_detail") val outlet: Outlet?,
+
+    @SerializedName("planned_arrival") val plannedArrival: String?,
+    @SerializedName("planned_departure") val plannedDeparture: String?
 )

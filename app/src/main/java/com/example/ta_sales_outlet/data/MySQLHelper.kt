@@ -34,35 +34,68 @@ object MySQLHelper {
 
     fun insertVisitCheckIn(stopId: Int, photoPath: String, lat: Double, lng: Double, notes: String): Boolean {
         val conn = connect() ?: return false
-        return try {
-            // Update tabel route_stops atau insert ke tabel visits (sesuai struktur DB Anda)
-            // Disini saya asumsikan update status di route_stops dan simpan bukti
 
-            // Contoh: Kita anggap ada kolom 'proof_photo', 'actual_lat', 'actual_lng', 'visit_time' di route_stops
-            val sql = """
-            UPDATE route_stops 
-            SET status = 'VISITED',
-                proof_photo = ?,
-                actual_lat = ?,
-                actual_lng = ?,
-                visit_time = NOW(),
-                notes = ?
-            WHERE idroute_stops = ?
-        """
+        try {
+            // 1. Matikan Auto-Commit untuk memulai Transaksi
+            // (Supaya kalau insert gagal, update status juga dibatalkan)
+            conn.autoCommit = false
 
-            val stmt = conn.prepareStatement(sql)
-            stmt.setString(1, photoPath) // Path dari Laravel (visits/foto.jpg)
-            stmt.setDouble(2, lat)
-            stmt.setDouble(3, lng)
-            stmt.setString(4, notes)
-            stmt.setInt(5, stopId)
+            // --- QUERY 1: INSERT KE TABEL VISITS ---
+            // Kita gabungkan info Lokasi ke dalam Notes karena belum ada kolom lat/lng di tabel visits
+            val fullNotes = "$notes (Loc: $lat, $lng)"
 
-            val rows = stmt.executeUpdate()
-            conn.close()
-            rows > 0
+            val sqlInsert = """
+                INSERT INTO visits (
+                    route_stops_idroute_stops, 
+                    check_in, 
+                    status, 
+                    img_url, 
+                    notes, 
+                    created_at, 
+                    updated_at
+                ) VALUES (?, NOW(), 'VISITED', ?, ?, NOW(), NOW())
+            """
+
+            val stmtInsert = conn.prepareStatement(sqlInsert)
+            stmtInsert.setInt(1, stopId)      // route_stops_idroute_stops
+            stmtInsert.setString(2, photoPath) // img_url
+            stmtInsert.setString(3, fullNotes) // notes
+
+            val rowsInserted = stmtInsert.executeUpdate()
+
+            // --- QUERY 2: UPDATE STATUS DI ROUTE_STOPS ---
+            val sqlUpdate = """
+                UPDATE route_stops 
+                SET status = 'VISITED', 
+                    updated_at = NOW() 
+                WHERE idroute_stops = ?
+            """
+
+            val stmtUpdate = conn.prepareStatement(sqlUpdate)
+            stmtUpdate.setInt(1, stopId)
+
+            val rowsUpdated = stmtUpdate.executeUpdate()
+
+            // 2. Cek apakah kedua aksi berhasil?
+            if (rowsInserted > 0 && rowsUpdated > 0) {
+                conn.commit() // Simpan perubahan permanen
+                conn.close()
+                return true
+            } else {
+                conn.rollback() // Batalkan jika ada yang gagal
+                conn.close()
+                return false
+            }
+
         } catch (e: Exception) {
             e.printStackTrace()
-            false
+            try {
+                conn.rollback() // Batalkan transaksi jika error
+                conn.close()
+            } catch (ex: SQLException) {
+                ex.printStackTrace()
+            }
+            return false
         }
     }
 }

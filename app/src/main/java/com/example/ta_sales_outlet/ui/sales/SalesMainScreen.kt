@@ -20,7 +20,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-// Pastikan Import Halaman-Halaman ini ada (Jika merah, Alt+Enter)
 import com.example.ta_sales_outlet.ui.sales.catalog.ProductCatalogScreen
 import com.example.ta_sales_outlet.ui.sales.history.SalesHistoryScreen
 import com.example.ta_sales_outlet.ui.sales.profile.SalesProfileScreen
