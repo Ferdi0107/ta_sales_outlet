@@ -83,4 +83,5 @@ dependencies {
     implementation("org.mindrot:jbcrypt:0.4")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.material:material-icons-extended")
+    implementation(libs.androidx.material.icons.extended)
 }

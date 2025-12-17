@@ -16,6 +16,10 @@ import coil.compose.AsyncImage
 import com.example.ta_sales_outlet.data.model.Product
 import java.text.NumberFormat
 import java.util.*
+import com.example.ta_sales_outlet.utils.UrlHelper
+import coil.request.ImageRequest
+import android.util.Log
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun ProductCard(
@@ -39,7 +43,18 @@ fun ProductCard(
                     .background(Color.LightGray)
             ) {
                 AsyncImage(
-                    model = product.photoUrl,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(UrlHelper.getFullImageUrl(product.photoUrl))
+                        .listener(
+                            onError = { _, result ->
+                                // INI AKAN MUNCUL DI LOGCAT JIKA GAGAL
+                                Log.e("CEK_GAMBAR", "Gagal muat: ${result.throwable.message}")
+                            },
+                            onSuccess = { _, _ ->
+                                Log.d("CEK_GAMBAR", "Sukses muat gambar")
+                            }
+                        )
+                        .build(),
                     contentDescription = product.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()

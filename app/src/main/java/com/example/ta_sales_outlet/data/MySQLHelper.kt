@@ -32,4 +32,37 @@ object MySQLHelper {
         return conn
     }
 
+    fun insertVisitCheckIn(stopId: Int, photoPath: String, lat: Double, lng: Double, notes: String): Boolean {
+        val conn = connect() ?: return false
+        return try {
+            // Update tabel route_stops atau insert ke tabel visits (sesuai struktur DB Anda)
+            // Disini saya asumsikan update status di route_stops dan simpan bukti
+
+            // Contoh: Kita anggap ada kolom 'proof_photo', 'actual_lat', 'actual_lng', 'visit_time' di route_stops
+            val sql = """
+            UPDATE route_stops 
+            SET status = 'VISITED',
+                proof_photo = ?,
+                actual_lat = ?,
+                actual_lng = ?,
+                visit_time = NOW(),
+                notes = ?
+            WHERE idroute_stops = ?
+        """
+
+            val stmt = conn.prepareStatement(sql)
+            stmt.setString(1, photoPath) // Path dari Laravel (visits/foto.jpg)
+            stmt.setDouble(2, lat)
+            stmt.setDouble(3, lng)
+            stmt.setString(4, notes)
+            stmt.setInt(5, stopId)
+
+            val rows = stmt.executeUpdate()
+            conn.close()
+            rows > 0
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
 }

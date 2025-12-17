@@ -14,15 +14,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+// Pastikan Import Halaman-Halaman ini ada (Jika merah, Alt+Enter)
 import com.example.ta_sales_outlet.ui.sales.catalog.ProductCatalogScreen
 import com.example.ta_sales_outlet.ui.sales.history.SalesHistoryScreen
 import com.example.ta_sales_outlet.ui.sales.profile.SalesProfileScreen
-import androidx.navigation.NavType
-import androidx.navigation.navArgument
 import com.example.ta_sales_outlet.ui.sales.visit.VisitDetailScreen
 
 // Definisi Menu Navigasi
@@ -35,11 +36,10 @@ sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: 
 
 @Composable
 fun SalesMainScreen(
-    onLogoutRoot: () -> Unit // Callback logout diteruskan dari MainActivity
+    onLogoutRoot: () -> Unit
 ) {
     val bottomNavController = rememberNavController()
 
-    // Daftar Menu
     val items = listOf(
         BottomNavItem.Home,
         BottomNavItem.Catalog,
@@ -57,6 +57,7 @@ fun SalesMainScreen(
                 val currentDestination = navBackStackEntry?.destination
 
                 items.forEach { screen ->
+                    // Logic agar icon menyala sesuai halaman aktif
                     val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
 
                     NavigationBarItem(
@@ -65,7 +66,7 @@ fun SalesMainScreen(
                         selected = isSelected,
                         onClick = {
                             bottomNavController.navigate(screen.route) {
-                                // Agar saat back tidak menumpuk stack, kembali ke Home dulu
+                                // Agar tidak menumpuk stack saat back
                                 popUpTo(bottomNavController.graph.findStartDestination().id) {
                                     saveState = true
                                 }
@@ -82,30 +83,43 @@ fun SalesMainScreen(
             }
         }
     ) { innerPadding ->
-        // NavHost KHUSUS SALES (Nested Navigation)
+
+        // --- NAV HOST: PETA UTAMA SALES ---
         NavHost(
             navController = bottomNavController,
             startDestination = BottomNavItem.Home.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            // Tab HOME (Ubah sedikit untuk kirim navController)
+
+            // 1. TAB HOME (BERANDA)
             composable(BottomNavItem.Home.route) {
-                // Kita perlu pass navController ke SalesHomeScreen agar dia bisa pindah halaman
                 SalesHomeScreen(
-                    navController = bottomNavController, // <--- TAMBAHKAN INI
-                    onLogout = { /* ... */ }
+                    navController = bottomNavController, // Kirim nav controller agar bisa pindah ke Detail
+                    onLogout = { /* Tidak dipakai di sini lagi */ }
                 )
             }
 
-            // ... Tab Catalog, History, Profile tetap sama ...
+            // 2. TAB CATALOG (PRODUK) -> Inilah yang tadi error (Missing)
+            composable(BottomNavItem.Catalog.route) {
+                ProductCatalogScreen()
+            }
 
-            // HALAMAN BARU: DETAIL KUNJUNGAN
-            // Menerima argumen 'stopId'
+            // 3. TAB HISTORY (RIWAYAT)
+            composable(BottomNavItem.History.route) {
+                SalesHistoryScreen()
+            }
+
+            // 4. TAB PROFILE
+            composable(BottomNavItem.Profile.route) {
+                SalesProfileScreen(onLogout = onLogoutRoot)
+            }
+
+            // 5. HALAMAN TAMBAHAN: DETAIL KUNJUNGAN
+            // (Tidak ada di Bottom Bar, tapi bisa diakses dari Home)
             composable(
                 route = "visit_detail/{stopId}",
                 arguments = listOf(navArgument("stopId") { type = NavType.IntType })
             ) { backStackEntry ->
-                // Ambil ID yang dikirim
                 val stopId = backStackEntry.arguments?.getInt("stopId") ?: 0
                 VisitDetailScreen(stopId = stopId, navController = bottomNavController)
             }
