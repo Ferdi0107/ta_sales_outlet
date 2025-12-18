@@ -30,6 +30,7 @@ import com.example.ta_sales_outlet.data.pref.UserPreferences // Import ini wajib
 import kotlinx.coroutines.launch // Import coroutine
 import org.mindrot.jbcrypt.BCrypt
 import java.sql.ResultSet
+import com.example.ta_sales_outlet.utils.SessionManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -141,20 +142,25 @@ fun LoginScreen(
 
                                     if (isPasswordMatch) {
                                         (context as? android.app.Activity)?.runOnUiThread {
-                                            // --- BAGIAN PENTING YANG DITAMBAHKAN ---
                                             scope.launch {
+                                                // PERBAIKAN DI SINI:
                                                 userPreferences.saveSession(
-                                                    token = "manual_login",
+                                                    isLogin = true,           // Ganti 'token' jadi 'isLogin'
                                                     role = dbRole,
-                                                    name = dbName,
-                                                    userId = dbId // Simpan ID ke HP
+                                                    email = email,            // Pastikan variabel 'email' dari input field dimasukkan
+                                                    userId = dbId,            // Sekarang sudah tidak merah
+                                                    name = dbName             // Sekarang sudah tidak merah
                                                 )
+
+                                                // Simpan juga ke SessionManager sementara (biar langsung bisa dipakai tanpa restart)
+                                                SessionManager.userId = dbId
+                                                SessionManager.userName = dbName
+                                                SessionManager.userRole = dbRole
 
                                                 Toast.makeText(context, "Login Berhasil! Halo $dbName", Toast.LENGTH_SHORT).show()
                                                 isLoading = false
                                                 onLoginSuccess(dbRole)
                                             }
-                                            // ----------------------------------------
                                         }
                                     } else {
                                         (context as? android.app.Activity)?.runOnUiThread {

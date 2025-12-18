@@ -24,6 +24,7 @@ import com.example.ta_sales_outlet.ui.sales.catalog.ProductCatalogScreen
 import com.example.ta_sales_outlet.ui.sales.history.SalesHistoryScreen
 import com.example.ta_sales_outlet.ui.sales.profile.SalesProfileScreen
 import com.example.ta_sales_outlet.ui.sales.visit.VisitDetailScreen
+import com.example.ta_sales_outlet.ui.sales.cart.CartScreen
 
 // Definisi Menu Navigasi
 sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
@@ -100,7 +101,12 @@ fun SalesMainScreen(
 
             // 2. TAB CATALOG (PRODUK) -> Inilah yang tadi error (Missing)
             composable(BottomNavItem.Catalog.route) {
-                ProductCatalogScreen()
+                // Masukkan parameter navController = bottomNavController
+                ProductCatalogScreen(navController = bottomNavController)
+            }
+
+            composable("cart_checkout") {
+                CartScreen(navController = bottomNavController)
             }
 
             // 3. TAB HISTORY (RIWAYAT)

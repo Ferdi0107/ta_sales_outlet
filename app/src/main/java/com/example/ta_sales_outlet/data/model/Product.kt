@@ -7,7 +7,10 @@ data class Product(
     @SerializedName("kode") val code: String?,
     @SerializedName("nama") val name: String,
     @SerializedName("deskripsi") val description: String?,
+    @SerializedName("hpp") val hpp: Double?,
     @SerializedName("price") val price: Double,
     @SerializedName("url_photo") val photoUrl: String?,
-    @SerializedName("categories_idcategories") val categoryId: Int
+    @SerializedName("categories_idcategories") val categoryId: Int,
+
+    @SerializedName("variants") val variants: List<ProductVariant> = emptyList()
 )

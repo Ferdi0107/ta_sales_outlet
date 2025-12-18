@@ -75,7 +75,13 @@ object RouteRepository {
                         status = rsRoute.getString("status"),
                         totalStops = rsRoute.getInt("total_stops"),
                         distanceKm = rsRoute.getDouble("distance_km"),
-                        stops = stopList
+                        stops = stopList,
+                        startLat = rsRoute.getDouble("start_lat"),
+                        startLng = rsRoute.getDouble("start_lng"),
+                        endLat = rsRoute.getDouble("end_lat"),
+                        endLng = rsRoute.getDouble("end_lng"),
+                        startPoint = rsRoute.getString("start_point"),
+                        endPoint = rsRoute.getString("end_point")
                     )
                 )
             }

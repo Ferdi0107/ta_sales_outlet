@@ -1,220 +1,189 @@
 package com.example.ta_sales_outlet.ui.sales.catalog
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.example.ta_sales_outlet.ui.components.ProductCard
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import androidx.navigation.NavController
+import com.example.ta_sales_outlet.data.local.CartManager // Import CartManager
 import com.example.ta_sales_outlet.data.model.Product
 import com.example.ta_sales_outlet.data.repository.ProductRepository
+import com.example.ta_sales_outlet.ui.components.ProductCard // Import ProductCard
 import java.text.NumberFormat
 import java.util.*
+import com.example.ta_sales_outlet.ui.components.VariantBottomSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductCatalogScreen() {
-    // State
-    var productList by remember { mutableStateOf<List<Product>>(emptyList()) }
-    var filteredList by remember { mutableStateOf<List<Product>>(emptyList()) }
-    var searchQuery by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(true) }
+fun ProductCatalogScreen(navController: NavController) {
+    val context = LocalContext.current
 
-    // Warna Brand
-    val brandColor = Color(0xFF1976D2)
+    // State Data Produk
+    var productList by remember { mutableStateOf<List<Product>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedProduct by remember { mutableStateOf<Product?>(null) }
+
+    // State Keranjang (Mengamati perubahan di CartManager)
+    // trik: kita baca size-nya agar UI merender ulang saat ada item ditambah/kurang
+    val cartSize = CartManager.items.size
+    val totalItem = CartManager.getTotalItems()
+    val totalPrice = CartManager.getTotalPrice()
 
     // Load Data Produk
     LaunchedEffect(Unit) {
         Thread {
-            val data = ProductRepository.getAllProducts()
-            productList = data
-            filteredList = data
+            productList = ProductRepository.getAllProducts(context)
             isLoading = false
         }.start()
     }
 
-    // Logic Pencarian
-    fun performSearch(query: String) {
-        searchQuery = query
-        filteredList = if (query.isEmpty()) {
-            productList
-        } else {
-            productList.filter {
-                it.name.contains(query, ignoreCase = true) ||
-                        (it.code?.contains(query, ignoreCase = true) == true)
-            }
-        }
+    // Filter Pencarian
+    val filteredList = if (searchQuery.isEmpty()) {
+        productList
+    } else {
+        productList.filter { it.name.contains(searchQuery, ignoreCase = true) }
     }
 
     Scaffold(
         topBar = {
-            // Search Bar di Header
-            Surface(
-                shadowElevation = 4.dp,
-                color = Color.White,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Katalog Produk",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { performSearch(it) },
-                        placeholder = { Text("Cari baju, celana...") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedBorderColor = brandColor
-                        )
-                    )
-                }
+            Column {
+                TopAppBar(
+                    title = { Text("Buat Pesanan", fontSize = 18.sp, fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                )
+                // Search Bar Sederhana
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Cari produk...") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = TextFieldDefaults.textFieldColors(
+                        containerColor = Color(0xFFF5F5F5),
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent
+                    ),
+                    singleLine = true
+                )
             }
         },
-        floatingActionButton = {
-            // Tombol Keranjang (Nanti difungsikan)
-            FloatingActionButton(
-                onClick = { /* TODO: Ke Keranjang */ },
-                containerColor = brandColor,
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.ShoppingCart, contentDescription = "Cart")
+        // Floating Bottom Bar (Keranjang)
+        bottomBar = {
+            if (totalItem > 0) {
+                CartSummaryBar(
+                    totalItem = totalItem,
+                    totalPrice = totalPrice,
+                    onClick = {
+                        navController.navigate("cart_checkout")
+                    }
+                )
             }
         }
     ) { paddingValues ->
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color(0xFFF5F5F5)) // Background abu-abu muda
+                .background(Color(0xFFF9F9F9))
         ) {
             if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = brandColor
-                )
-            } else if (filteredList.isEmpty()) {
-                Text(
-                    "Produk tidak ditemukan",
-                    modifier = Modifier.align(Alignment.Center),
-                    color = Color.Gray
-                )
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
-                // Tampilan Grid 2 Kolom
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     contentPadding = PaddingValues(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     items(filteredList) { product ->
                         ProductCard(
                             product = product,
-                            buttonText = "Orderkan",
-                            buttonColor = brandColor,
-                            onButtonClick = { selectedProduct ->
-                                println("Sales memilih: ${selectedProduct.name}")
+                            onCardClick = { clickedProduct ->
+                                // SAAT DIKLIK, ISI STATE selectedProduct
+                                // INI AKAN MEMICU MODAL MUNCUL
+                                selectedProduct = clickedProduct
                             }
                         )
                     }
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
             }
+        }
+        if (selectedProduct != null) {
+            VariantBottomSheet(
+                product = selectedProduct!!,
+                onDismiss = {
+                    selectedProduct = null // Tutup Sheet
+                }
+            )
         }
     }
 }
 
+// Komponen Bar Keranjang Melayang di Bawah
 @Composable
-fun ProductItemCard(product: Product, brandColor: Color) {
+fun CartSummaryBar(totalItem: Int, totalPrice: Double, onClick: () -> Unit) {
+    val formatRp = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
+
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(2.dp),
-        modifier = Modifier.fillMaxWidth()
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1976D2)),
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(8.dp)
     ) {
-        Column {
-            // 1. Gambar Produk (Menggunakan Coil Library)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(150.dp)
-                    .background(Color.LightGray)
-            ) {
-                AsyncImage(
-                    model = product.photoUrl,
-                    contentDescription = product.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    // Placeholder jika gambar loading/error
-                    error = null // Bisa diganti gambar default dari resource
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "$totalItem Item dipilih",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 12.sp
+                )
+                Text(
+                    text = formatRp.format(totalPrice),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
                 )
             }
 
-            // 2. Info Produk
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = product.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = product.code ?: "-",
-                    fontSize = 11.sp,
-                    color = Color.Gray
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Format Rupiah
-                val formatRp = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
-                Text(
-                    text = formatRp.format(product.price),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = brandColor
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Tombol Tambah
-                Button(
-                    onClick = { /* TODO: Add to Cart Logic */ },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(36.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = brandColor)
-                ) {
-                    Text("Tambah", fontSize = 12.sp)
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Lihat Keranjang", color = Color.White, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = Color.White)
             }
         }
     }
