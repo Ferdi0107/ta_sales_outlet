@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.ta_sales_outlet.data.pref.UserPreferences
 import com.example.ta_sales_outlet.ui.auth.LoginScreen
+import com.example.ta_sales_outlet.ui.auth.OutletRegisterScreen
 import com.example.ta_sales_outlet.ui.outlet.OutletHomeScreen
 import com.example.ta_sales_outlet.ui.sales.SalesHomeScreen
 import com.example.ta_sales_outlet.ui.sales.SalesMainScreen
@@ -62,18 +63,15 @@ fun AppNavigation() {
         composable("login") {
             LoginScreen(
                 onLoginSuccess = { role ->
-                    // Saat login sukses, pindahkan user sesuai role
-                    if (role == "SALESPERSON") {
-                        navController.navigate("sales_home") {
-                            popUpTo("login") { inclusive = true } // Hapus login dari history back
-                        }
-                    } else {
-                        navController.navigate("outlet_home") {
-                            popUpTo("login") { inclusive = true }
-                        }
-                    }
-                }
+                    val dest = if (role == "SALESPERSON") "sales_home" else "outlet_home"
+                    navController.navigate(dest) { popUpTo("login") { inclusive = true } }
+                },
+                navController = navController // <--- TAMBAHKAN INI
             )
+        }
+
+        composable("register_outlet") {
+            OutletRegisterScreen(navController = navController)
         }
 
         // Halaman 2: DASHBOARD SALES

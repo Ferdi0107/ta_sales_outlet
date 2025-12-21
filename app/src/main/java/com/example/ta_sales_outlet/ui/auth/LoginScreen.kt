@@ -3,6 +3,7 @@ package com.example.ta_sales_outlet.ui.auth
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,11 +31,13 @@ import com.example.ta_sales_outlet.data.pref.UserPreferences // Import ini wajib
 import kotlinx.coroutines.launch // Import coroutine
 import org.mindrot.jbcrypt.BCrypt
 import java.sql.ResultSet
+import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (String) -> Unit
+    onLoginSuccess: (String) -> Unit,
+    navController: NavController
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope() // Scope untuk menjalankan fungsi saveSession
@@ -197,6 +200,24 @@ fun LoginScreen(
             } else {
                 Text("MASUK", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Belum punya akun? ", color = Color.Gray)
+            Text(
+                "Daftar Outlet",
+                color = Color(0xFF1976D2),
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable {
+                    // Pastikan rute ini sudah didaftarkan di NavHost MainActivity
+                    navController.navigate("register_outlet")
+                }
+            )
         }
     }
 }
