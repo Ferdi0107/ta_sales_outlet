@@ -2,10 +2,12 @@ package com.example.ta_sales_outlet.ui.sales.visit
 
 import android.net.Uri
 import android.os.Environment
+import android.util.Log // Import Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable // Import clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -53,12 +55,14 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
     var isLoading by remember { mutableStateOf(true) }
 
     // State UI Status & Waktu
-    var visitStatus by remember { mutableStateOf("PLANNED") } // PLANNED atau VISITED
+    var visitStatus by remember { mutableStateOf("PLANNED") }
     var visitTime by remember { mutableStateOf("-") }
 
     // --- LOAD DATA (DARI DATABASE) ---
     LaunchedEffect(stopId) {
         scope.launch(Dispatchers.IO) {
+            Log.d("DEBUG_VISIT", "Fetching detail for stopId: $stopId") // LOG
+
             // Ambil data di Background Thread
             val data = RouteRepository.getVisitDetail(stopId)
 
@@ -66,12 +70,17 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
             withContext(Dispatchers.Main) {
                 if (data != null) {
                     stopData = data
+                    // Pastikan status tidak null, default ke PLANNED/DRAFT
                     visitStatus = data.status ?: "PLANNED"
+
+                    Log.d("DEBUG_VISIT", "Data found. Status from DB: ${data.status}") // LOG
 
                     // Logika sederhana penentuan waktu
                     if (visitStatus == "VISITED") {
                         visitTime = "Selesai"
                     }
+                } else {
+                    Log.e("DEBUG_VISIT", "Data is NULL for stopId: $stopId") // LOG ERROR
                 }
                 isLoading = false
             }
@@ -81,10 +90,15 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
     // --- LOGIC KAMERA ---
     var tempPhotoFile by remember { mutableStateOf<File?>(null) }
 
-    fun createImageFile(): File {
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        return File.createTempFile("VISIT_${timeStamp}_", ".jpg", storageDir)
+    fun createImageFile(): File? {
+        return try {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            File.createTempFile("VISIT_${timeStamp}_", ".jpg", storageDir)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -126,7 +140,6 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                                 visitTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
 
                                 // --- PENTING: SIMPAN SESSION OUTLET ---
-                                // Agar CartScreen tahu kita sedang belanja untuk toko ini
                                 if (stopData != null && stopData!!.outletId != null) {
                                     SessionManager.currentOutletId = stopData!!.outletId!!
                                     SessionManager.currentOutletName = stopData!!.outlet?.name ?: "Outlet"
@@ -135,11 +148,15 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                                 Toast.makeText(context, "Check-in Berhasil!", Toast.LENGTH_SHORT).show()
                             }
                         }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "Gagal Upload ke Server", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Gagal Upload: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Error Upload: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -254,45 +271,55 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                 Text("Status Kunjungan", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                 Spacer(modifier = Modifier.height(8.dp))
 
-                if (visitStatus == "PLANNED") {
-                    Button(
-                        onClick = {
-                            val file = createImageFile()
-                            tempPhotoFile = file
-                            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                            cameraLauncher.launch(uri)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(80.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
-                        elevation = ButtonDefaults.buttonElevation(4.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(28.dp))
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column {
-                                Text("Ambil Foto Check-In", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                                Text("Wajib foto di depan toko", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
+                // --- LOGIKA STATUS YANG DIPERBAIKI (MENGGUNAKAN WHEN) ---
+                when (visitStatus.uppercase()) {
+                    "VISITED" -> {
+                        // TAMPILAN JIKA SUDAH CHECK-IN
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = successColor),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column {
+                                    Text("SUDAH DIKUNJUNGI", color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text("Status: Selesai", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
+                                }
                             }
                         }
                     }
-                } else {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = successColor),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    else -> {
+                        // TAMPILAN JIKA DRAFT / PUBLISHED / CONFIRMED (BELUM CHECK-IN)
+                        Button(
+                            onClick = {
+                                val file = createImageFile()
+                                if (file != null) {
+                                    tempPhotoFile = file
+                                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                                    cameraLauncher.launch(uri)
+                                } else {
+                                    Toast.makeText(context, "Gagal membuat file foto", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+                            elevation = ButtonDefaults.buttonElevation(4.dp)
                         ) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column {
-                                Text("SUDAH DIKUNJUNGI", color = Color.White, fontWeight = FontWeight.Bold)
-                                Text("Status: Selesai", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(28.dp))
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column {
+                                    Text("Ambil Foto Check-In", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                    Text("Wajib foto di depan toko", fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f))
+                                }
                             }
                         }
                     }
@@ -306,7 +333,7 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                 Text("Aktivitas Toko", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Tombol ORDER (DENGAN NAVIGASI YANG BENAR)
+                // Tombol ORDER
                 MenuCardBig(
                     icon = Icons.Default.ShoppingCart,
                     title = "Buat Pesanan Baru",
@@ -315,8 +342,6 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                     color = if (visitStatus == "VISITED") primaryColor else Color.Gray,
                     onClick = {
                         if (visitStatus == "VISITED") {
-                            // --- HUBUNGKAN KE KATALOG DI SINI ---
-                            // Pastikan rute "catalog" sudah terdaftar di NavHost MainActivity/SalesMainScreen
                             navController.navigate(BottomNavItem.Catalog.route)
                         } else {
                             Toast.makeText(context, "Silakan Check-In foto dulu!", Toast.LENGTH_SHORT).show()
@@ -350,15 +375,17 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
     }
 }
 
-// --- KOMPONEN UI CUSTOM (TETAP SAMA) ---
+// --- KOMPONEN UI CUSTOM (DIPERBAIKI) ---
 @Composable
 fun MenuCardBig(icon: ImageVector, title: String, subtitle: String, color: Color, onClick: () -> Unit) {
+    // FIX: Menggunakan Modifier.clickable() agar kompatibel dengan Card versi Material3 default
     Card(
-        onClick = onClick,
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(2.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() } // Tambahkan clickable di sini
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -385,12 +412,15 @@ fun MenuCardBig(icon: ImageVector, title: String, subtitle: String, color: Color
 
 @Composable
 fun MenuCardSmall(icon: ImageVector, title: String, color: Color, onClick: () -> Unit) {
+    // FIX: Menggunakan Modifier.clickable()
     Card(
-        onClick = onClick,
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(1.dp),
-        modifier = Modifier.fillMaxWidth().height(80.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp)
+            .clickable { onClick() } // Tambahkan clickable di sini
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),

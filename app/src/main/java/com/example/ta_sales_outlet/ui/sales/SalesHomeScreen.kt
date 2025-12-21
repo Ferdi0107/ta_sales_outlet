@@ -398,8 +398,24 @@ fun TimelineStartEndItem(
 
 @Composable
 fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitClick: (Int) -> Unit) {
-    val isVisited = stop.status == "VISITED"
-    val statusColor = if (isVisited) Color(0xFF4CAF50) else brandColor
+    // 1. Tentukan Status & Tampilan Visual
+    val status = stop.status ?: "DRAFT"
+
+    // Konfigurasi Warna & Teks berdasarkan Status
+    val (statusColor, statusText, buttonText, isButtonEnabled) = when (status) {
+        "VISITED" -> Quadruple(Color(0xFF43A047), "Selesai", "Lihat Detail", true) // Hijau
+        "CONFIRMED" -> Quadruple(brandColor, "Siap Dikunjungi", "Kunjungi", true) // Biru (ACC Outlet)
+        "PUBLISHED" -> Quadruple(Color(0xFFFB8C00), "Menunggu Konfirmasi Outlet", "Detail", true) // Oranye
+        "REJECTED", "CANCELLED" -> Quadruple(Color(0xFFE53935), "Ditolak / Batal", "Cek", true) // Merah
+        else -> Quadruple(Color.Gray, "Draft", "Kunjungi", true) // Abu-abu
+    }
+
+    // Helper class lokal untuk return 4 value (atau bisa pakai data class)
+    // Jika error "Quadruple not found", hapus tipe datanya dan biarkan inferensi tipe bekerja,
+    // atau buat data class sederhana. Di sini saya pakai logic variabel langsung agar simpel:
+
+    /* Agar tidak error Quadruple, kita bongkar logicnya di bawah ini saja.
+    */
 
     Row(modifier = Modifier.height(IntrinsicSize.Min)) {
         // KOLOM KIRI (Garis & Dot) - Lebar Tetap 50dp
@@ -415,18 +431,20 @@ fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitCli
             )
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Dot Biru/Hijau
+            // Dot Indikator Status
             Box(
                 modifier = Modifier
-                    .size(14.dp)
-                    .background(
-                        color = if (isVisited) statusColor else Color.White,
-                        shape = CircleShape
-                    )
-                    .then(if (!isVisited) Modifier.border(2.dp, statusColor, CircleShape) else Modifier)
-            )
+                    .size(16.dp) // Sedikit lebih besar
+                    .background(Color.White, CircleShape)
+                    .border(3.dp, statusColor, CircleShape) // Border warna status
+            ) {
+                // Jika Visited, isi full warnanya
+                if (status == "VISITED") {
+                    Box(modifier = Modifier.matchParentSize().background(statusColor, CircleShape))
+                }
+            }
 
-            // Garis (Selalu muncul kecuali dipaksa hilang, tapi disini selalu kita buat muncul)
+            // Garis Penghubung
             if (!isLast) {
                 Box(
                     modifier = Modifier
@@ -439,21 +457,24 @@ fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitCli
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // KOLOM KANAN (Konten)
+        // KOLOM KANAN (Konten Toko)
         Column(modifier = Modifier.padding(bottom = 24.dp).weight(1f)) {
+
+            // Nama Toko & Icon Check
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = stop.outlet?.name ?: "Unknown Outlet",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
-                    color = if (isVisited) Color.Gray else Color.Black,
+                    color = if (status == "VISITED") Color.Gray else Color.Black,
                     modifier = Modifier.weight(1f)
                 )
-                if (isVisited) {
+                if (status == "VISITED") {
                     Icon(Icons.Default.CheckCircle, contentDescription = null, tint = statusColor, modifier = Modifier.size(18.dp))
                 }
             }
 
+            // Alamat
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(12.dp))
                 Spacer(modifier = Modifier.width(4.dp))
@@ -465,29 +486,54 @@ fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitCli
                 )
             }
 
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // LABEL STATUS (BADGE KECIL)
+            // Ini yang menampilkan "Menunggu Konfirmasi", "Siap Dikunjungi", dll
+            Surface(
+                color = statusColor.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier.padding(bottom = 6.dp)
+            ) {
+                Text(
+                    text = statusText.uppercase(),
+                    color = statusColor,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+
+            // Estimasi Waktu
             if (stop.plannedArrival != null && stop.plannedDeparture != null) {
                 Text(
-                    text = "Estimasi: ${formatTime(stop.plannedArrival)} - ${formatTime(stop.plannedDeparture)}",
+                    text = "Jadwal: ${formatTime(stop.plannedArrival)} - ${formatTime(stop.plannedDeparture)}",
                     fontSize = 11.sp,
-                    color = brandColor,
-                    modifier = Modifier.padding(top = 2.dp)
+                    color = Color.Gray
                 )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // TOMBOL AKSI
             Button(
                 onClick = { onVisitClick(stop.id) },
                 shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                 modifier = Modifier.height(32.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isVisited) Color.LightGray else brandColor,
-                    contentColor = if (isVisited) Color.Black else Color.White
-                )
+                    // Jika Published (Menunggu), warnanya Orange pudar atau outline
+                    // Jika Confirmed, warnanya Brand Color (Biru)
+                    containerColor = if (status == "VISITED" || status == "REJECTED") Color.LightGray else statusColor,
+                    contentColor = if (status == "VISITED" || status == "REJECTED") Color.Black else Color.White
+                ),
+                enabled = isButtonEnabled
             ) {
-                Text(text = if (isVisited) "Lihat Detail" else "Kunjungi", fontSize = 12.sp)
+                Text(text = buttonText, fontSize = 12.sp)
             }
         }
     }
 }
+
+// Helper Class sederhana agar kode lebih rapi (Taruh di paling bawah file atau di luar fungsi)
+data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)

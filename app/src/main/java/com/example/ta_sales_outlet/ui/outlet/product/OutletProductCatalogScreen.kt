@@ -1,4 +1,4 @@
-package com.example.ta_sales_outlet.ui.sales.catalog
+package com.example.ta_sales_outlet.ui.outlet.product
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,51 +21,63 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.ta_sales_outlet.data.local.CartManager // Import CartManager
+// Import komponen yang sama dengan Sales
+import com.example.ta_sales_outlet.data.local.CartManager
 import com.example.ta_sales_outlet.data.model.Product
 import com.example.ta_sales_outlet.data.repository.ProductRepository
-import com.example.ta_sales_outlet.ui.components.ProductCard // Import ProductCard
+import com.example.ta_sales_outlet.ui.components.ProductCard
+import com.example.ta_sales_outlet.ui.components.VariantBottomSheet
 import java.text.NumberFormat
 import java.util.*
-import com.example.ta_sales_outlet.ui.components.VariantBottomSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductCatalogScreen(navController: NavController) {
+fun OutletProductCatalogScreen(navController: NavController) {
     val context = LocalContext.current
 
-    // State Data Produk
+    // --- STATE ---
     var productList by remember { mutableStateOf<List<Product>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
+
+    // State untuk BottomSheet Varian
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
-    // State Keranjang (Mengamati perubahan di CartManager)
-    // trik: kita baca size-nya agar UI merender ulang saat ada item ditambah/kurang
+    // State Keranjang (Pantau CartManager)
+    // Trik: Baca size agar Compose merender ulang saat ada item masuk
     val cartSize = CartManager.items.size
     val totalItem = CartManager.getTotalItems()
     val totalPrice = CartManager.getTotalPrice()
 
-    // Load Data Produk
+    // --- LOAD DATA ---
     LaunchedEffect(Unit) {
-        Thread {
-            productList = ProductRepository.getAllProducts(context)
-            isLoading = false
-        }.start()
+        // Ambil data produk menggunakan Repository yang sudah ada
+        // Menggunakan Dispatchers.IO untuk thread background
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val data = ProductRepository.getAllProducts(context)
+            // Update UI di Main Thread
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                productList = data
+                isLoading = false
+            }
+        }
     }
 
     // Filter Pencarian
     val filteredList = if (searchQuery.isEmpty()) {
         productList
     } else {
-        productList.filter { it.name.contains(searchQuery, ignoreCase = true) }
+        productList.filter {
+            it.name.contains(searchQuery, ignoreCase = true) ||
+                    (it.code?.contains(searchQuery, ignoreCase = true) == true)
+        }
     }
 
     Scaffold(
         topBar = {
             Column {
                 TopAppBar(
-                    title = { Text("Buat Pesanan", fontSize = 18.sp, fontWeight = FontWeight.Bold) },
+                    title = { Text("Belanja Stok", fontSize = 18.sp, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -73,34 +85,37 @@ fun ProductCatalogScreen(navController: NavController) {
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
                 )
-                // Search Bar Sederhana
+                // Search Bar
                 TextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Cari produk...") },
+                    placeholder = { Text("Cari baju, celana...") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     shape = RoundedCornerShape(8.dp),
-                    colors = TextFieldDefaults.colors( // Ganti textFieldColors jadi colors
-                        focusedContainerColor = Color(0xFFF5F5F5), // containerColor dipecah jadi dua (focused & unfocused)
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF5F5F5),
                         unfocusedContainerColor = Color(0xFFF5F5F5),
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
+                        disabledContainerColor = Color(0xFFF5F5F5),
+
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent
                     ),
                     singleLine = true
                 )
             }
         },
-        // Floating Bottom Bar (Keranjang)
+        // Floating Bottom Bar (Muncul jika ada isi keranjang)
         bottomBar = {
             if (totalItem > 0) {
-                CartSummaryBar(
+                OutletCartSummaryBar(
                     totalItem = totalItem,
                     totalPrice = totalPrice,
                     onClick = {
-                        navController.navigate("cart_checkout")
+                        // Arahkan ke Halaman Cart Outlet
+                        navController.navigate("outlet_cart")
                     }
                 )
             }
@@ -114,6 +129,10 @@ fun ProductCatalogScreen(navController: NavController) {
         ) {
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (filteredList.isEmpty()) {
+                Box(modifier = Modifier.align(Alignment.Center)) {
+                    Text("Produk tidak ditemukan", color = Color.Gray)
+                }
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
@@ -123,19 +142,21 @@ fun ProductCatalogScreen(navController: NavController) {
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(filteredList) { product ->
+                        // REUSE: Menggunakan ProductCard milik Sales
                         ProductCard(
                             product = product,
                             onCardClick = { clickedProduct ->
-                                // SAAT DIKLIK, ISI STATE selectedProduct
-                                // INI AKAN MEMICU MODAL MUNCUL
                                 selectedProduct = clickedProduct
                             }
                         )
                     }
+                    // Spacer agar item terbawah tidak tertutup CartBar
                     item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
             }
         }
+
+        // REUSE: Menggunakan VariantBottomSheet milik Sales
         if (selectedProduct != null) {
             VariantBottomSheet(
                 product = selectedProduct!!,
@@ -147,9 +168,9 @@ fun ProductCatalogScreen(navController: NavController) {
     }
 }
 
-// Komponen Bar Keranjang Melayang di Bawah
+// Komponen Bar Keranjang (Sama persis dengan sales, cuma ganti nama fungsi biar rapi)
 @Composable
-fun CartSummaryBar(totalItem: Int, totalPrice: Double, onClick: () -> Unit) {
+fun OutletCartSummaryBar(totalItem: Int, totalPrice: Double, onClick: () -> Unit) {
     val formatRp = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
 
     Card(

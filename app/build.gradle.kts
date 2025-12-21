@@ -16,7 +16,7 @@ plugins {
 
 android {
     namespace = "com.example.ta_sales_outlet"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.ta_sales_outlet"
@@ -106,6 +106,6 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-
+    implementation("androidx.compose.material3:material3:1.4.0")
     implementation("org.mindrot:jbcrypt:0.4")
 }

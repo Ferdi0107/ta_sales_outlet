@@ -26,22 +26,23 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController // Import NavController
 import com.example.ta_sales_outlet.data.MySQLHelper
-import com.example.ta_sales_outlet.data.pref.UserPreferences // Import ini wajib
-import kotlinx.coroutines.launch // Import coroutine
+import com.example.ta_sales_outlet.data.pref.UserPreferences
+import com.example.ta_sales_outlet.utils.SessionManager
+import kotlinx.coroutines.launch
 import org.mindrot.jbcrypt.BCrypt
 import java.sql.ResultSet
-import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onLoginSuccess: (String) -> Unit,
-    navController: NavController
+    navController: NavController // <--- 1. TAMBAHKAN PARAMETER INI
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope() // Scope untuk menjalankan fungsi saveSession
-    val userPreferences = remember { UserPreferences(context) } // Akses ke penyimpanan HP
+    val scope = rememberCoroutineScope()
+    val userPreferences = remember { UserPreferences(context) }
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -132,7 +133,7 @@ fun LoginScreen(
                                     var dbHash = resultSet.getString("password")
                                     val dbName = resultSet.getString("nama")
                                     val dbRole = resultSet.getString("role")
-                                    val dbId = resultSet.getInt("idusers") // AMBIL ID
+                                    val dbId = resultSet.getInt("idusers")
 
                                     if (dbHash.startsWith("$2y$")) {
                                         dbHash = dbHash.replace("\$2y\$", "\$2a\$")
@@ -144,20 +145,23 @@ fun LoginScreen(
 
                                     if (isPasswordMatch) {
                                         (context as? android.app.Activity)?.runOnUiThread {
-                                            // --- BAGIAN PENTING YANG DITAMBAHKAN ---
                                             scope.launch {
                                                 userPreferences.saveSession(
-                                                    token = "manual_login",
+                                                    isLogin = true,
                                                     role = dbRole,
-                                                    name = dbName,
-                                                    userId = dbId // Simpan ID ke HP
+                                                    email = email,
+                                                    userId = dbId,
+                                                    name = dbName
                                                 )
+
+                                                SessionManager.userId = dbId
+                                                SessionManager.userName = dbName
+                                                SessionManager.userRole = dbRole
 
                                                 Toast.makeText(context, "Login Berhasil! Halo $dbName", Toast.LENGTH_SHORT).show()
                                                 isLoading = false
                                                 onLoginSuccess(dbRole)
                                             }
-                                            // ----------------------------------------
                                         }
                                     } else {
                                         (context as? android.app.Activity)?.runOnUiThread {
@@ -204,6 +208,7 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // --- 2. LINK DAFTAR OUTLET (BARU) ---
         Row(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxWidth()
@@ -211,10 +216,10 @@ fun LoginScreen(
             Text("Belum punya akun? ", color = Color.Gray)
             Text(
                 "Daftar Outlet",
-                color = Color(0xFF1976D2),
+                color = Color(0xFF1976D2), // Warna Biru
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.clickable {
-                    // Pastikan rute ini sudah didaftarkan di NavHost MainActivity
+                    // Pindah ke halaman Register
                     navController.navigate("register_outlet")
                 }
             )

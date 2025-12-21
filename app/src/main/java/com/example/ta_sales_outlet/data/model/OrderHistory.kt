@@ -8,5 +8,8 @@ data class OrderHistory(
     val status: String,         // PACKING, SHIPPED, dll
     val paymentStatus: String,  // PAID, NOT_DUE, dll
     val paymentMethod: String,  // CASH, CREDIT
-    val date: String            // YYYY-MM-DD
+    val date: String,            // YYYY-MM-DD
+
+    val address: String? = null,
+    val notes: String? = null
 )

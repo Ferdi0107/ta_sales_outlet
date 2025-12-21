@@ -18,6 +18,12 @@ interface UploadApi {
         @Part photo: MultipartBody.Part
     ): Call<UploadResponse>
 
+    @Multipart
+    @POST("api/upload-retur")
+    fun uploadReturPhoto(
+        @Part photo: MultipartBody.Part
+    ): Call<UploadResponse>
+
     companion object {
         // Setup Retrofit Sederhana
         fun create(): UploadApi {

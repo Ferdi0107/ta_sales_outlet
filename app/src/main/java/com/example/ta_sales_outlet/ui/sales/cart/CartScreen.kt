@@ -152,7 +152,8 @@ fun CartScreen(navController: NavController) {
                                     isSubmitting = true
                                     Thread {
                                         val success = OrderRepository.createOrder(
-                                            salesId = SessionManager.userId,
+                                            userId = SessionManager.userId,
+                                            channel = "SELF_ORDER",
                                             outletId = selectedOutlet!!.id,
                                             paymentMethod = selectedPayment,
                                             notes = notes,
