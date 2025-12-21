@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -14,20 +15,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.ta_sales_outlet.data.model.Product
+import com.example.ta_sales_outlet.utils.UrlHelper
 import java.text.NumberFormat
 import java.util.*
-import com.example.ta_sales_outlet.utils.UrlHelper
-import coil.request.ImageRequest
-import android.util.Log
-import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun ProductCard(
     product: Product,
-    buttonText: String = "Tambah", // Bisa diganti "Beli", "Order", dll
-    buttonColor: Color = Color(0xFF1976D2),
-    onButtonClick: (Product) -> Unit // Callback aksi saat tombol ditekan
+    onCardClick: (Product) -> Unit // Callback saat kartu diklik
 ) {
+    val brandColor = Color(0xFF1976D2)
+    val formatRp = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
+
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(12.dp),
@@ -35,33 +34,22 @@ fun ProductCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
-            // Gambar Produk
+            // Gambar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(150.dp)
+                    .height(130.dp)
                     .background(Color.LightGray)
             ) {
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(UrlHelper.getFullImageUrl(product.photoUrl))
-                        .listener(
-                            onError = { _, result ->
-                                // INI AKAN MUNCUL DI LOGCAT JIKA GAGAL
-                                Log.e("CEK_GAMBAR", "Gagal muat: ${result.throwable.message}")
-                            },
-                            onSuccess = { _, _ ->
-                                Log.d("CEK_GAMBAR", "Sukses muat gambar")
-                            }
-                        )
-                        .build(),
+                    model = UrlHelper.getFullImageUrl(product.photoUrl),
                     contentDescription = product.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
             }
 
-            // Info Produk
+            // Info
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
                     text = product.name,
@@ -75,34 +63,25 @@ fun ProductCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = product.code ?: "-",
-                    fontSize = 11.sp,
-                    color = Color.Gray
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val formatRp = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
-                Text(
                     text = formatRp.format(product.price),
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
-                    color = buttonColor // Warna harga mengikuti tema tombol
+                    color = brandColor
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Tombol Dinamis
+                // Tombol "Pilih Varian"
                 Button(
-                    onClick = { onButtonClick(product) },
+                    onClick = { onCardClick(product) }, // Panggil fungsi di Parent
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(36.dp),
                     shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = buttonColor)
+                    colors = ButtonDefaults.buttonColors(containerColor = brandColor),
+                    contentPadding = PaddingValues(0.dp)
                 ) {
-                    Text(buttonText, fontSize = 12.sp)
+                    Text("Pilih Varian", fontSize = 12.sp)
                 }
             }
         }

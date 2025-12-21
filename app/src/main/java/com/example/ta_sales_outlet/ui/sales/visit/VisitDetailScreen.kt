@@ -38,9 +38,9 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import com.example.ta_sales_outlet.data.model.RouteStop
-
-// Import Data Model & Repository Anda
 import com.example.ta_sales_outlet.data.repository.RouteRepository
+import com.example.ta_sales_outlet.utils.SessionManager
+import com.example.ta_sales_outlet.ui.sales.BottomNavItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,7 +68,7 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                     stopData = data
                     visitStatus = data.status ?: "PLANNED"
 
-                    // Logika sederhana penentuan waktu (bisa disesuaikan dengan data real checkin_time)
+                    // Logika sederhana penentuan waktu
                     if (visitStatus == "VISITED") {
                         visitTime = "Selesai"
                     }
@@ -108,7 +108,6 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                         val serverPath = response.body()!!.path
 
                         // 2. Simpan ke Database Lokal
-                        // Gunakan Lat/Long asli dari outlet jika tersedia, atau lokasi saat ini
                         val currentLat = stopData?.outlet?.latitude ?: -7.2575
                         val currentLng = stopData?.outlet?.longitude ?: 112.7521
 
@@ -122,8 +121,17 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
 
                         withContext(Dispatchers.Main) {
                             if (isSaved) {
+                                // --- UPDATE VISUAL ---
                                 visitStatus = "VISITED"
                                 visitTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+
+                                // --- PENTING: SIMPAN SESSION OUTLET ---
+                                // Agar CartScreen tahu kita sedang belanja untuk toko ini
+                                if (stopData != null && stopData!!.outletId != null) {
+                                    SessionManager.currentOutletId = stopData!!.outletId!!
+                                    SessionManager.currentOutletName = stopData!!.outlet?.name ?: "Outlet"
+                                }
+
                                 Toast.makeText(context, "Check-in Berhasil!", Toast.LENGTH_SHORT).show()
                             }
                         }
@@ -169,7 +177,6 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                 Text("Data Kunjungan Tidak Ditemukan", color = Color.Gray)
             }
         } else {
-            // Data Outlet aman untuk dipakai
             val outlet = stopData!!.outlet
 
             Column(
@@ -180,7 +187,7 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                     .padding(16.dp)
             ) {
                 // ==========================================
-                // 1. HEADER TOKO (DATA REAL)
+                // 1. HEADER TOKO
                 // ==========================================
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -192,7 +199,6 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                         modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Icon Toko
                         Box(
                             modifier = Modifier
                                 .size(56.dp)
@@ -204,18 +210,13 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
 
                         Spacer(modifier = Modifier.width(16.dp))
 
-                        // Info Teks Dinamis
                         Column(modifier = Modifier.weight(1f)) {
-                            // Nama Toko
                             Text(
                                 text = outlet?.name ?: "Tanpa Nama",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp
                             )
-
                             Spacer(modifier = Modifier.height(6.dp))
-
-                            // Alamat
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -226,48 +227,8 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                                     maxLines = 2
                                 )
                             }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            // Contact Person (PIC)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Person, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = outlet?.contactPerson ?: "-",
-                                    color = Color.Gray,
-                                    fontSize = 12.sp
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            // No Telepon
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Phone, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = outlet?.phone ?: "-",
-                                    color = Color.Gray,
-                                    fontSize = 12.sp
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            // Tipe Pembayaran
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Payments, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = outlet?.paymentType ?: "Cash", // Default Cash jika null
-                                    color = Color.Gray,
-                                    fontSize = 12.sp
-                                )
-                            }
                         }
 
-                        // Tombol Navigasi (Pakai Lat/Lng Data Real)
                         IconButton(
                             onClick = {
                                 MapsHelper.openNavigation(
@@ -294,7 +255,6 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 if (visitStatus == "PLANNED") {
-                    // TAMPILAN JIKA BELUM CHECK-IN
                     Button(
                         onClick = {
                             val file = createImageFile()
@@ -319,7 +279,6 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                         }
                     }
                 } else {
-                    // TAMPILAN JIKA SUDAH CHECK-IN (Hijau)
                     Card(
                         colors = CardDefaults.cardColors(containerColor = successColor),
                         shape = RoundedCornerShape(16.dp),
@@ -347,25 +306,26 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
                 Text("Aktivitas Toko", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Tombol ORDER
+                // Tombol ORDER (DENGAN NAVIGASI YANG BENAR)
                 MenuCardBig(
                     icon = Icons.Default.ShoppingCart,
                     title = "Buat Pesanan Baru",
                     subtitle = "Input order pembelian barang",
+                    // Warna abu-abu jika belum visited, Biru jika sudah
                     color = if (visitStatus == "VISITED") primaryColor else Color.Gray,
                     onClick = {
                         if (visitStatus == "VISITED") {
-                            // TODO: Navigasi ke Halaman Order
-                            Toast.makeText(context, "Membuka Katalog: ${outlet?.name}", Toast.LENGTH_SHORT).show()
+                            // --- HUBUNGKAN KE KATALOG DI SINI ---
+                            // Pastikan rute "catalog" sudah terdaftar di NavHost MainActivity/SalesMainScreen
+                            navController.navigate(BottomNavItem.Catalog.route)
                         } else {
-                            Toast.makeText(context, "Silakan Check-In dulu!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Silakan Check-In foto dulu!", Toast.LENGTH_SHORT).show()
                         }
                     }
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Menu Sekunder
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier.weight(1f)) {
                         MenuCardSmall(
@@ -391,7 +351,6 @@ fun VisitDetailScreen(stopId: Int, navController: NavController) {
 }
 
 // --- KOMPONEN UI CUSTOM (TETAP SAMA) ---
-
 @Composable
 fun MenuCardBig(icon: ImageVector, title: String, subtitle: String, color: Color, onClick: () -> Unit) {
     Card(

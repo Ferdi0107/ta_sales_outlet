@@ -13,12 +13,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Store
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -26,19 +24,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.example.ta_sales_outlet.data.model.Route
 import com.example.ta_sales_outlet.data.model.RouteStop
 import com.example.ta_sales_outlet.data.pref.UserPreferences
 import com.example.ta_sales_outlet.data.repository.RouteRepository
-import java.text.SimpleDateFormat
-import java.util.*
-import androidx.navigation.NavController
 import com.example.ta_sales_outlet.utils.MapsHelper
+import java.text.SimpleDateFormat
+import com.example.ta_sales_outlet.utils.SessionManager
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SalesHomeScreen(
-    navController: NavController, // <--- Parameter Baru
+    navController: NavController,
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -50,7 +49,7 @@ fun SalesHomeScreen(
     var routeList by remember { mutableStateOf<List<Route>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    // Warna Tema Gradient
+    // Warna Tema
     val brandColor = Color(0xFF1976D2)
     val brandLight = Color(0xFF42A5F5)
     val bgSurface = Color(0xFFF8F9FA)
@@ -68,7 +67,7 @@ fun SalesHomeScreen(
     Scaffold(
         containerColor = bgSurface,
         topBar = {
-            // Header Custom dengan Gradient
+            // Header Gradient
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -77,7 +76,7 @@ fun SalesHomeScreen(
                             colors = listOf(brandColor, brandLight)
                         )
                     )
-                    .padding(bottom = 24.dp) // Memberi ruang untuk lengkungan (opsional)
+                    .padding(bottom = 24.dp)
             ) {
                 Row(
                     modifier = Modifier
@@ -125,32 +124,8 @@ fun SalesHomeScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 if (routeList.isEmpty()) {
-                    item {
-                        EmptyStateCard()
-                    }
+                    item { EmptyStateCard() }
                 } else {
-                    // --- BAGIAN 1: TOMBOL MULAI (HEADER) ---
-                    // Kita taruh di dalam 'item' (tunggal) sebelum list rute
-                    item {
-                        // Ambil koordinat start dari rute pertama (jika ada)
-                        // Atau hardcode dulu jika di database belum ada kolom start_lat
-                        val startLat = -7.2891
-                        val startLng = 112.7343
-
-                        Button(
-                            onClick = { MapsHelper.openNavigation(context, startLat, startLng) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Mulai Perjalanan (Ke Gudang)")
-                        }
-                    }
-
-                    // --- BAGIAN 2: DAFTAR RUTE (BODY) ---
-                    // Ini kode lama Anda, menampilkan kartu-kartu rute
                     items(routeList) { route ->
                         val isFirst = (route == routeList.first())
                         PremiumRouteCard(
@@ -162,27 +137,7 @@ fun SalesHomeScreen(
                             }
                         )
                     }
-
-                    // --- BAGIAN 3: TOMBOL SELESAI (FOOTER) ---
-                    // Kita taruh di dalam 'item' (tunggal) setelah list rute selesai
-                    item {
-                        val endLat = -7.2891
-                        val endLng = 112.7343
-
-                        OutlinedButton(
-                            onClick = { MapsHelper.openNavigation(context, endLat, endLng) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Gray)
-                        ) {
-                            Icon(Icons.Default.Home, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Selesai & Pulang (Ke Depo)")
-                        }
-
-                        // Spacer tambahan biar tombol tidak mepet banget sama navigasi HP bawah
-                        Spacer(modifier = Modifier.height(30.dp))
-                    }
+                    item { Spacer(modifier = Modifier.height(30.dp)) }
                 }
             }
         }
@@ -214,17 +169,16 @@ fun PremiumRouteCard(
     route: Route,
     brandColor: Color,
     defaultExpanded: Boolean,
-    onVisitClick: (Int) -> Unit
+    onVisitClick: (Int) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(defaultExpanded) }
-
-    // Animasi putaran panah
     val rotationState by animateFloatAsState(targetValue = if (expanded) 180f else 0f, label = "arrow")
+    val context = LocalContext.current
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(4.dp), // Shadow lebih tegas
+        elevation = CardDefaults.cardElevation(4.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
@@ -238,7 +192,6 @@ fun PremiumRouteCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Icon Kalender di dalam Kotak Kecil
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -263,8 +216,6 @@ fun PremiumRouteCard(
                             fontSize = 16.sp,
                             color = Color.Black
                         )
-
-                        // Badge Status & Info
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Place, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(12.dp))
                             Text(
@@ -275,8 +226,6 @@ fun PremiumRouteCard(
                         }
                     }
                 }
-
-                // Icon Panah Animasi
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
                     contentDescription = "Expand",
@@ -285,33 +234,76 @@ fun PremiumRouteCard(
                 )
             }
 
-            // GARIS PEMBATAS HALUS
             if (expanded) {
                 Divider(color = Color.Gray.copy(alpha = 0.1f), thickness = 1.dp)
             }
 
             // ISI KARTU (TIMELINE)
             AnimatedVisibility(visible = expanded) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     val stops = route.stops ?: emptyList()
-                    stops.forEachIndexed { index, stop ->
-                        TimelineItem(
-                            stop = stop,
-                            brandColor = brandColor,
-                            isLast = index == stops.lastIndex,
-                            onVisitClick = onVisitClick
-                        )
+
+                    // ==========================================
+                    // 1. TITIK HIJAU (START)
+                    // ==========================================
+                    TimelineStartEndItem(
+                        title = "TITIK AWAL (START)",
+                        locationName = route.startPoint ?: "Kantor Pusat",
+                        time = "08:00", // Bisa ambil dari route.plannedDeparture jika ada
+                        isStart = true, // HIJAU
+                        onClick = {
+                            // Buka Maps ke Titik Start
+                            // Pastikan Anda sudah punya properti startLat/Lng di Model Route
+                            // Jika belum, beri nilai default 0.0 dulu agar tidak error
+                            /* MapsHelper.openNavigation(context, route.startLat, route.startLng) */
+                            // Contoh sementara Hardcode jika belum ada variabelnya:
+                            MapsHelper.openNavigation(context, -7.2575, 112.7521)
+                        }
+                    )
+
+                    // ==========================================
+                    // 2. LOOP KUNJUNGAN (STOPS)
+                    // ==========================================
+                    if (stops.isNotEmpty()) {
+                        stops.forEach { stop ->
+                            TimelineItem(
+                                stop = stop,
+                                brandColor = brandColor,
+                                isLast = false,
+                                onVisitClick = { stopId ->
+                                    onVisitClick(stopId)
+                                }
+                            )
+                        }
+                    } else {
+                        // Garis dummy jika tidak ada stop
+                        Box(modifier = Modifier.padding(start = 24.dp).height(20.dp).width(2.dp).background(Color.LightGray.copy(alpha=0.5f)))
                     }
+
+                    // ==========================================
+                    // 3. TITIK MERAH (END)
+                    // ==========================================
+                    TimelineStartEndItem(
+                        title = "TITIK AKHIR (END)",
+                        locationName = route.endPoint ?: "Kembali ke Depo",
+                        time = "17:00",
+                        isStart = false, // MERAH
+                        onClick = {
+                            /* MapsHelper.openNavigation(context, route.endLat, route.endLng) */
+                            MapsHelper.openNavigation(context, -7.2575, 112.7521)
+                        }
+                    )
                 }
             }
         }
     }
 }
 
+// --- HELPER COMPONENTS ---
+
 fun formatTime(dateTimeStr: String?): String {
     if (dateTimeStr.isNullOrEmpty()) return "-"
     return try {
-        // Format DB: 2025-12-17 10:30:00
         val parser = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
         val date = parser.parse(dateTimeStr)
@@ -322,21 +314,24 @@ fun formatTime(dateTimeStr: String?): String {
 }
 
 @Composable
-fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitClick: (Int) -> Unit) {
-    val isVisited = stop.status == "VISITED"
-
-    // Warna garis/dot: Jika Visited = Hijau, Belum = Biru
-    val statusColor = if (isVisited) Color(0xFF4CAF50) else brandColor
+fun TimelineStartEndItem(
+    title: String,
+    locationName: String?,
+    time: String?,
+    isStart: Boolean,    // True = Hijau, False = Merah
+    onClick: () -> Unit // Callback klik untuk navigasi
+) {
+    val pointColor = if (isStart) Color(0xFF4CAF50) else Color(0xFFE53935)
+    val icon = if (isStart) Icons.Default.PlayArrow else Icons.Default.Flag
 
     Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-        // --- KOLOM KIRI (JAM & GARIS) ---
+        // KOLOM KIRI (Garis & Dot) - Lebar Tetap 50dp
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.width(50.dp) // Lebarkan sedikit buat jam
+            modifier = Modifier.width(50.dp)
         ) {
-            // Tampilkan Jam Rencana (Hanya Jam Awal)
             Text(
-                text = formatTime(stop.plannedArrival),
+                text = time ?: "--:--",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Gray
@@ -344,7 +339,83 @@ fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitCli
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Titik (Dot)
+            // Lingkaran Berwarna
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(pointColor, CircleShape)
+                    .border(2.dp, Color.White, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+
+            // Garis Penghubung (Hanya Start yang punya garis ke bawah)
+            if (isStart) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .fillMaxHeight()
+                        .background(Color.LightGray.copy(alpha = 0.5f))
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // KOLOM KANAN (Info Teks)
+        Column(
+            modifier = Modifier
+                .padding(bottom = 24.dp)
+                .clickable { onClick() } // Bisa diklik untuk Maps
+        ) {
+            Text(
+                text = title.uppercase(),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = pointColor
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = locationName ?: "Lokasi Tidak Diketahui",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = Color.Black
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Directions, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(12.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Buka Peta", fontSize = 11.sp, color = Color.Gray)
+            }
+        }
+    }
+}
+
+@Composable
+fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitClick: (Int) -> Unit) {
+    val isVisited = stop.status == "VISITED"
+    val statusColor = if (isVisited) Color(0xFF4CAF50) else brandColor
+
+    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+        // KOLOM KIRI (Garis & Dot) - Lebar Tetap 50dp
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.width(50.dp)
+        ) {
+            Text(
+                text = formatTime(stop.plannedArrival),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Dot Biru/Hijau
             Box(
                 modifier = Modifier
                     .size(14.dp)
@@ -352,12 +423,10 @@ fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitCli
                         color = if (isVisited) statusColor else Color.White,
                         shape = CircleShape
                     )
-                    .then(
-                        if (!isVisited) Modifier.border(2.dp, statusColor, CircleShape) else Modifier
-                    )
+                    .then(if (!isVisited) Modifier.border(2.dp, statusColor, CircleShape) else Modifier)
             )
 
-            // Garis (Line)
+            // Garis (Selalu muncul kecuali dipaksa hilang, tapi disini selalu kita buat muncul)
             if (!isLast) {
                 Box(
                     modifier = Modifier
@@ -370,10 +439,8 @@ fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitCli
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // --- KOLOM KANAN (KONTEN) ---
+        // KOLOM KANAN (Konten)
         Column(modifier = Modifier.padding(bottom = 24.dp).weight(1f)) {
-
-            // Baris Nama Toko & Status Icon
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = stop.outlet?.name ?: "Unknown Outlet",
@@ -382,13 +449,11 @@ fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitCli
                     color = if (isVisited) Color.Gray else Color.Black,
                     modifier = Modifier.weight(1f)
                 )
-                // Icon Centang tetap ada sebagai indikator visual
                 if (isVisited) {
                     Icon(Icons.Default.CheckCircle, contentDescription = null, tint = statusColor, modifier = Modifier.size(18.dp))
                 }
             }
 
-            // Alamat
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(12.dp))
                 Spacer(modifier = Modifier.width(4.dp))
@@ -400,7 +465,6 @@ fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitCli
                 )
             }
 
-            // Tampilkan Rentang Waktu (Optional, biar user tau durasi)
             if (stop.plannedArrival != null && stop.plannedDeparture != null) {
                 Text(
                     text = "Estimasi: ${formatTime(stop.plannedArrival)} - ${formatTime(stop.plannedDeparture)}",
@@ -412,23 +476,17 @@ fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitCli
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // --- TOMBOL AKSI (REVISI: SELALU MUNCUL) ---
-            // Tombol tidak lagi di-hide, tapi warnanya dibedakan
             Button(
-                onClick = { onVisitClick(stop.id) }, // Tetap bisa diklik meski sudah visited
+                onClick = { onVisitClick(stop.id) },
                 shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                 modifier = Modifier.height(32.dp),
                 colors = ButtonDefaults.buttonColors(
-                    // Jika visited: Abu-abu (Kesan read-only/selesai), Jika belum: Biru
                     containerColor = if (isVisited) Color.LightGray else brandColor,
                     contentColor = if (isVisited) Color.Black else Color.White
                 )
             ) {
-                Text(
-                    text = if (isVisited) "Lihat Detail" else "Kunjungi",
-                    fontSize = 12.sp
-                )
+                Text(text = if (isVisited) "Lihat Detail" else "Kunjungi", fontSize = 12.sp)
             }
         }
     }

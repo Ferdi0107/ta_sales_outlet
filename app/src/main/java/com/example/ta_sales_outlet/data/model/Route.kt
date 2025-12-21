@@ -5,10 +5,17 @@ import com.google.gson.annotations.SerializedName
 data class Route(
     @SerializedName("idroutes") val id: Int,
     @SerializedName("route_date") val date: String?,
-    @SerializedName("status") val status: String?, // DRAFT, OPTIMIZED, dll
+    @SerializedName("status") val status: String?,
     @SerializedName("total_stops") val totalStops: Int?,
     @SerializedName("distance_km") val distanceKm: Double?,
-    @SerializedName("stops") val stops: List<RouteStop>? = null // List kunjungan
+    @SerializedName("stops") val stops: List<RouteStop>? = null,
+
+    @SerializedName("start_lat") val startLat: Double?,
+    @SerializedName("start_lng") val startLng: Double?,
+    @SerializedName("end_lat") val endLat: Double?,
+    @SerializedName("end_lng") val endLng: Double?,
+    @SerializedName("start_point") val startPoint: String?,
+    @SerializedName("end_point") val endPoint: String?
 )
 
 data class RouteStop(
