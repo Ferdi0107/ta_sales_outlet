@@ -410,13 +410,6 @@ fun TimelineItem(stop: RouteStop, brandColor: Color, isLast: Boolean, onVisitCli
         else -> Quadruple(Color.Gray, "Draft", "Kunjungi", true) // Abu-abu
     }
 
-    // Helper class lokal untuk return 4 value (atau bisa pakai data class)
-    // Jika error "Quadruple not found", hapus tipe datanya dan biarkan inferensi tipe bekerja,
-    // atau buat data class sederhana. Di sini saya pakai logic variabel langsung agar simpel:
-
-    /* Agar tidak error Quadruple, kita bongkar logicnya di bawah ini saja.
-    */
-
     Row(modifier = Modifier.height(IntrinsicSize.Min)) {
         // KOLOM KIRI (Garis & Dot) - Lebar Tetap 50dp
         Column(

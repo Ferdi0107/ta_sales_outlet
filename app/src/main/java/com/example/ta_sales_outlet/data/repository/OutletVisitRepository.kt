@@ -98,14 +98,6 @@ object OutletVisitRepository {
             stmtRS.setInt(1, routeStopId)
             stmtRS.executeUpdate()
 
-            // --- STEP B: Update Tabel 'scheduled_outlet' ---
-            // Tantangan: route_stops tidak punya ID scheduled_outlet langsung.
-            // Solusi: Kita cari scheduled_outlet yang cocok berdasarkan Schedule ID & Outlet ID
-
-            // Logic:
-            // 1. Ambil `routes_idroutes` & `outlets_idoutlets` dari route_stop ini.
-            // 2. Ambil `schedules_idschedules` dari tabel `routes`.
-            // 3. Update `scheduled_outlet` dimana `schedules_idschedules` & `outlets_idoutlets` cocok.
 
             val sqlUpdateSchedule = """
                 UPDATE scheduled_outlet target

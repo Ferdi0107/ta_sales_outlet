@@ -18,8 +18,6 @@ object ProductRepository {
         if (conn == null) return emptyList()
 
         try {
-            // QUERY: Ambil Produk + Varian-nya sekaligus
-            // Kita pakai LEFT JOIN agar produk yang BELUM punya varian tetap muncul (opsional)
             val sql = """
                 SELECT 
                     p.idproducts, p.kode, p.nama, p.deskripsi, p.price, p.url_photo, p.categories_idcategories,
