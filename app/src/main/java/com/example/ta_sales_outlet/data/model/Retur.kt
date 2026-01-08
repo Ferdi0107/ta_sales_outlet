@@ -7,7 +7,8 @@ data class ReturItem(
     val maxQty: Int,
 
     var inputQty: Int = 0,
-    var isSelected: Boolean = false
+    var isSelected: Boolean = false,
+    val photoUrl: String? = null
 )
 
 // Enum Alasan (Sesuai kolom ENUM di database)

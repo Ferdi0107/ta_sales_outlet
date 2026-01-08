@@ -32,6 +32,9 @@ import java.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.example.ta_sales_outlet.utils.UrlHelper
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -373,10 +376,20 @@ fun CartItemRowOutlet(item: CartManager.CartItem) {
             Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 if (!item.product.photoUrl.isNullOrEmpty()) {
                     AsyncImage(
-                        model = item.product.photoUrl,
+                        // PERBAIKAN 1: Gunakan UrlHelper untuk dapat link lengkap
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(UrlHelper.getFullImageUrl(item.product.photoUrl))
+                            .crossfade(true) // Biar munculnya halus
+                            .build(),
                         contentDescription = null,
-                        modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)).background(Color.LightGray),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.LightGray),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+
+                        // PERBAIKAN 2: Tambahkan indikator error biar ketahuan kalau gagal
+                        error = androidx.compose.ui.graphics.vector.rememberVectorPainter(androidx.compose.material.icons.Icons.Default.BrokenImage)
                     )
                 } else {
                     Box(Modifier.size(60.dp).background(Color.LightGray, RoundedCornerShape(8.dp)))

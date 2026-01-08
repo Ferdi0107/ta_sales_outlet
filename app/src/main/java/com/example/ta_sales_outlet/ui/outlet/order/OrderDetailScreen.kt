@@ -35,6 +35,11 @@ import java.util.Locale
 import android.widget.Toast
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.ui.platform.LocalContext
+import com.example.ta_sales_outlet.utils.UrlHelper
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.material.icons.filled.BrokenImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -302,10 +307,19 @@ fun OrderItemRow(item: OrderDetailItem, formatRp: NumberFormat) {
         Row(modifier = Modifier.padding(12.dp)) {
             if (item.photoUrl != null) {
                 AsyncImage(
-                    model = item.photoUrl,
+                    // GUNAKAN UrlHelper AGAR JADI LINK LENGKAP
+                    // Contoh: http://192.168.1.8:8000/storage/products/foto.png
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(UrlHelper.getFullImageUrl(item.photoUrl))
+                        .crossfade(true)
+                        .build(),
                     contentDescription = null,
-                    modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)).background(Color.LightGray),
-                    contentScale = ContentScale.Crop
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.LightGray),
+                    contentScale = ContentScale.Crop,
+                    error = rememberVectorPainter(Icons.Default.BrokenImage)
                 )
             } else {
                 Box(Modifier.size(60.dp).background(Color.LightGray, RoundedCornerShape(8.dp)))

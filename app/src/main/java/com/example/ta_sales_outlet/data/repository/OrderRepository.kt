@@ -133,18 +133,21 @@ object OrderRepository {
         val conn = MySQLHelper.connect() ?: return list
 
         try {
-            // Join ke products & variants untuk ambil nama & warna/size
+            // PERBAIKAN 1: Tambahkan 'p.url_photo' di bagian SELECT
             val sql = """
-                SELECT 
-                    od.idorder_details, 
-                    od.quantity,
-                    p.nama AS product_name,
-                    v.size, v.color
-                FROM order_details od
-                JOIN product_variants v ON od.product_variants_idproduct_variants = v.idproduct_variants
-                JOIN products p ON v.products_idproducts = p.idproducts
-                WHERE od.orders_idorders = ?
-            """
+            SELECT 
+                od.idorder_details, 
+                od.quantity,
+                p.nama AS product_name,
+                p.url_photo,  -- <--- TAMBAHKAN INI
+                v.size, 
+                v.color
+            FROM order_details od
+            JOIN product_variants v ON od.product_variants_idproduct_variants = v.idproduct_variants
+            JOIN products p ON v.products_idproducts = p.idproducts
+            WHERE od.orders_idorders = ?
+        """
+
             val stmt = conn.prepareStatement(sql)
             stmt.setInt(1, orderId)
             val rs = stmt.executeQuery()
@@ -155,8 +158,14 @@ object OrderRepository {
                     productName = rs.getString("product_name"),
                     variantName = "${rs.getString("size")} - ${rs.getString("color")}",
                     maxQty = rs.getInt("quantity"),
-                    inputQty = 0,     // Default 0
-                    isSelected = false // Default tidak tercentang
+
+                    // Default value
+                    inputQty = 0,
+                    isSelected = false,
+
+                    // PERBAIKAN 2: Masukkan data foto ke variabel photoUrl
+                    // Pastikan nama kolom 'url_photo' sesuai dengan tabel database Anda
+                    photoUrl = rs.getString("url_photo")
                 ))
             }
             conn.close()

@@ -5,6 +5,7 @@ import android.util.Log
 object UrlHelper {
     // Pastikan IP ini benar (10.0.2.2 untuk emulator, IP Laptop untuk HP Fisik)
     private const val BASE_URL = "http://10.0.2.2:8000"
+//    private const val BASE_URL = "http://192.168.1.9:8000"
 
     fun getFullImageUrl(subPath: String?): String {
         var path = subPath
