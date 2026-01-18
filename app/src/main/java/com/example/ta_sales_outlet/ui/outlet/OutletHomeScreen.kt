@@ -221,7 +221,7 @@ fun OutletHomeScreen(navController: NavController, onGoToCatalog: () -> Unit, on
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF43A047))
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Tidak ada tagihan aktif. Aman!", fontSize = 14.sp, color = Color(0xFF43A047))
+                                    Text("Tidak ada tagihan aktif.", fontSize = 14.sp, color = Color(0xFF43A047))
                                 }
                             }
                         }
@@ -287,7 +287,21 @@ fun OutletHomeScreen(navController: NavController, onGoToCatalog: () -> Unit, on
                                         }
                                     }
                                 },
-                                onReject = { /* Logic reject */ }
+                                onReject = {
+                                    scope.launch(Dispatchers.IO) {
+                                        // Panggil fungsi rejectVisit yang sudah Anda buat di Repository
+                                        val success = OutletVisitRepository.rejectVisit(visit.routeStopId)
+
+                                        withContext(Dispatchers.Main) {
+                                            if (success) {
+                                                Toast.makeText(context, "Kunjungan Ditolak/Dibatalkan", Toast.LENGTH_SHORT).show()
+                                                loadData() // Refresh agar kartu hilang/berubah status
+                                            } else {
+                                                Toast.makeText(context, "Gagal menolak kunjungan.", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    }
+                                }
                             )
                         }
                     }
@@ -307,9 +321,28 @@ fun VisitApprovalCard(
     onConfirm: () -> Unit,
     onReject: () -> Unit
 ) {
+    // 1. Definisikan Status
     val isConfirmed = visit.status == "CONFIRMED"
-    val cardColor = if (isConfirmed) Color(0xFFE8F5E9) else Color(0xFFE3F2FD)
-    val contentColor = if (isConfirmed) Color(0xFF2E7D32) else Color(0xFF1976D2)
+    val isCancelled = visit.status == "CANCELLED" // <--- TAMBAHAN: Cek status Cancelled
+
+    // 2. Tentukan Warna Berdasarkan Status
+    val cardColor = when {
+        isConfirmed -> Color(0xFFE8F5E9) // Hijau Muda (Diterima)
+        isCancelled -> Color(0xFFFFEBEE) // Merah Muda (Ditolak) <--- WARNA BARU
+        else -> Color(0xFFE3F2FD)        // Biru Muda (Menunggu)
+    }
+
+    val contentColor = when {
+        isConfirmed -> Color(0xFF2E7D32) // Hijau Tua
+        isCancelled -> Color(0xFFC62828) // Merah Tua <--- WARNA BARU
+        else -> Color(0xFF1976D2)        // Biru Tua
+    }
+
+    val statusLabel = when {
+        isConfirmed -> "TERJADWAL"
+        isCancelled -> "DITOLAK"         // <--- LABEL BARU
+        else -> "PERMINTAAN"
+    }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = cardColor),
@@ -329,7 +362,7 @@ fun VisitApprovalCard(
                     shape = RoundedCornerShape(4.dp)
                 ) {
                     Text(
-                        text = if (isConfirmed) "TERJADWAL" else "PERMINTAAN",
+                        text = statusLabel, // Gunakan variabel label dinamis
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = contentColor,
@@ -370,7 +403,8 @@ fun VisitApprovalCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // TOMBOL AKSI
-            if (!isConfirmed) {
+            // Hanya muncul jika BELUM Confirm DAN BELUM Cancel
+            if (!isConfirmed && !isCancelled) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
                         onClick = onReject,
@@ -392,8 +426,11 @@ fun VisitApprovalCard(
                     }
                 }
             } else {
+                // STATUS TEXT JIKA SUDAH SELESAI
+                val footerText = if (isCancelled) "Anda menolak kunjungan ini." else "Menunggu kedatangan sales."
+
                 Text(
-                    "Menunggu kedatangan sales.",
+                    text = footerText,
                     fontSize = 12.sp,
                     color = contentColor,
                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic

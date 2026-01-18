@@ -35,7 +35,7 @@ object OutletVisitRepository {
                 LEFT JOIN users u ON r.sales_idusers = u.idusers
                 JOIN outlets o ON rs.outlets_idoutlets = o.idoutlets
                 WHERE o.outlet_idusers = ?
-                  AND rs.status IN ('PUBLISHED', 'DRAFT', 'CONFIRMED') 
+                  AND rs.status IN ('PUBLISHED', 'CONFIRMED', 'CANCELLED') 
                 ORDER BY rs.planned_arrival ASC
             """
 
