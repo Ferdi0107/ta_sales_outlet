@@ -56,7 +56,7 @@ object OrderRepository {
             val dueDate = java.sql.Date(calendar.timeInMillis)
 
             // --- 2. INSERT HEADER (PERBAIKAN DI SINI) ---
-            val timeStamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.getDefault()).format(Date())
+            val timeStamp = SimpleDateFormat("yyMMdd-HHmmss", Locale.getDefault()).format(Date())
             val orderCode = "ORD-$timeStamp"
 
             val sqlOrder = """
