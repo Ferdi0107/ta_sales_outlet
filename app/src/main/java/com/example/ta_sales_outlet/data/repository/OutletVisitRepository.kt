@@ -36,6 +36,7 @@ object OutletVisitRepository {
                 JOIN outlets o ON rs.outlets_idoutlets = o.idoutlets
                 WHERE o.outlet_idusers = ?
                   AND rs.status IN ('PUBLISHED', 'CONFIRMED', 'CANCELLED') 
+                  AND r.route_date >= CURDATE()
                 ORDER BY rs.planned_arrival ASC
             """
 
