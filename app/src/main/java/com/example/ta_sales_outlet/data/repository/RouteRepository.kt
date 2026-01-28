@@ -17,8 +17,9 @@ object RouteRepository {
             // ORDER BY ABS(DATEDIFF(...)) ASC -> Mengurutkan berdasarkan jarak hari terdekat ke "Hari Ini"
             val sqlRoute = """
                 SELECT * FROM routes 
-                WHERE sales_idusers = $salesId 
-                ORDER BY ABS(DATEDIFF(route_date, CURDATE())) ASC
+                WHERE sales_idusers = ? 
+                AND route_date >= CURDATE()
+                ORDER BY route_date ASC
             """
             val stmt = conn.createStatement()
             val rsRoute = stmt.executeQuery(sqlRoute)
@@ -31,10 +32,9 @@ object RouteRepository {
                 val sqlStops = """
                     SELECT rs.*, o.* FROM route_stops rs
                     JOIN outlets o ON rs.outlets_idoutlets = o.idoutlets
-                    WHERE rs.routes_idroutes = $routeId
+                    WHERE rs.routes_idroutes = $routeId 
                     ORDER BY rs.seq ASC
                 """
-                // Gunakan statement baru agar tidak menimpa result set header
                 val stmtStop = conn.createStatement()
                 val rsStops = stmtStop.executeQuery(sqlStops)
 
